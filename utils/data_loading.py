@@ -56,6 +56,7 @@ class BasicDataset(Dataset):
             ))
 
         self.mask_values = list(sorted(np.unique(np.concatenate(unique), axis=0).tolist()))
+        # print(self.mask_values)
         logging.info(f'Unique mask values: {self.mask_values}')
 
     def __len__(self):
@@ -63,29 +64,34 @@ class BasicDataset(Dataset):
 
     @staticmethod
     def preprocess(mask_values, pil_img, scale, is_mask):
-        w, h = pil_img.size
-        newW, newH = int(scale * w), int(scale * h)
+        # w, h = pil_img.size
+        newW, newH = 512, 512
         assert newW > 0 and newH > 0, 'Scale is too small, resized images would have no pixel'
+
+        # Resize the image/mask
         pil_img = pil_img.resize((newW, newH), resample=Image.NEAREST if is_mask else Image.BICUBIC)
         img = np.asarray(pil_img)
+        # print("mask" if is_mask else "image")
+        # print(newW, newH)
 
         if is_mask:
+            # Initialize a mask with zeros and assign unique values
             mask = np.zeros((newH, newW), dtype=np.int64)
             for i, v in enumerate(mask_values):
-                if img.ndim == 2:
+                if img.ndim == 2:  # 2D mask
                     mask[img == v] = i
-                else:
+                else:  # 3D mask (e.g., RGB)
                     mask[(img == v).all(-1)] = i
-
             return mask
-
         else:
-            if img.ndim == 2:
-                img = img[np.newaxis, ...]
-            else:
-                img = img.transpose((2, 0, 1))
+            # Convert grayscale to 3-channel RGB
+            if img.ndim == 2:  # Grayscale
+                img = np.stack([img] * 3, axis=0)  # Convert to RGB by stacking the grayscale channel
+            else:  # RGB (3D)
+                img = img.transpose((2, 0, 1))  # Transpose from HWC to CHW (PyTorch format)
 
-            if (img > 1).any():
+            # Normalize to [0, 1] range if necessary
+            if img.max() > 1:
                 img = img / 255.0
 
             return img
@@ -97,15 +103,26 @@ class BasicDataset(Dataset):
 
         assert len(img_file) == 1, f'Either no image or multiple images found for the ID {name}: {img_file}'
         assert len(mask_file) == 1, f'Either no mask or multiple masks found for the ID {name}: {mask_file}'
-        mask = load_image(mask_file[0])
-        img = load_image(img_file[0])
 
+        # Load the image and mask
+        img = load_image(img_file[0])
+        mask = load_image(mask_file[0])
+
+        # print(img_file, mask_file)
+        # print(img.size, mask.size)
+
+        # Ensure the image and mask have the same dimensions
         assert img.size == mask.size, \
             f'Image and mask {name} should be the same size, but are {img.size} and {mask.size}'
 
+        # Preprocess the image and mask
         img = self.preprocess(self.mask_values, img, self.scale, is_mask=False)
         mask = self.preprocess(self.mask_values, mask, self.scale, is_mask=True)
 
+        # print('preprocessing...')
+        # print(img.size, mask.size)
+        
+        # Convert to PyTorch tensors
         return {
             'image': torch.as_tensor(img.copy()).float().contiguous(),
             'mask': torch.as_tensor(mask.copy()).long().contiguous()
@@ -114,4 +131,4 @@ class BasicDataset(Dataset):
 
 class CarvanaDataset(BasicDataset):
     def __init__(self, images_dir, mask_dir, scale=1):
-        super().__init__(images_dir, mask_dir, scale, mask_suffix='_mask')
+        super().__init__(images_dir, mask_dir, scale, mask_suffix='')
