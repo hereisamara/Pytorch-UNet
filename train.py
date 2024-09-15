@@ -22,8 +22,8 @@ from utils.dice_score import dice_loss
 # dir_img = Path('/content/drive/MyDrive/Deep Learning Lab/corrosion detection/unet-pytorch/Pytorch-UNet/VOC2007/JPEGImages/')
 # dir_mask = Path('/content/drive/MyDrive/Deep Learning Lab/corrosion detection/unet-pytorch/Pytorch-UNet/VOC2007/SegmentationClass/defect/')
 
-dir_img = Path('./data/filtered/images/')
-dir_mask = Path('./data/filtered/masks/')
+dir_img = Path('./data/images/')
+dir_mask = Path('./data/masks/')
 dir_checkpoint = Path('./checkpoints_new/')
 
 
@@ -51,8 +51,8 @@ def train_model(
     n_val = int(len(dataset) * val_percent)
     n_train = len(dataset) - n_val
     train_set, val_set = random_split(dataset, [n_train, n_val], generator=torch.Generator().manual_seed(0))
-    print(train_set)
-    print(val_set)
+    # print(train_set)
+    # print(val_set)
     # 3. Create data loaders
     loader_args = dict(batch_size=batch_size, num_workers=os.cpu_count(), pin_memory=True)
     train_loader = DataLoader(train_set, shuffle=True, **loader_args)

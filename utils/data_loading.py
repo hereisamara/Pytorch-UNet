@@ -56,8 +56,9 @@ class BasicDataset(Dataset):
             ))
 
         self.mask_values = list(sorted(np.unique(np.concatenate(unique), axis=0).tolist()))
-        # print(self.mask_values)
+        print(self.mask_values)
         logging.info(f'Unique mask values: {self.mask_values}')
+        print(f'Unique mask values: {self.mask_values}')
 
     def __len__(self):
         return len(self.ids)
